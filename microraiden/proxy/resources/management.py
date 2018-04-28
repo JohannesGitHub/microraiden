@@ -162,6 +162,50 @@ class ChannelManagementChannelInfo(Resource):
         except KeyError:
             return "Channel not found", 404
         ret = {'close_signature': encode_hex(close_signature)}
+        print(close_signature)
+        return ret, 200
+
+
+class ChannelManagementRegisterPayment(Resource):
+    def __init__(self, channel_manager):
+        super(ChannelManagementRegisterPayment, self).__init__()
+        self.channel_manager = channel_manager
+
+    def post(self, sender_address, opening_block, balance):
+        parser = reqparse.RequestParser()
+        parser.add_argument('signature', type=str)
+        args = parser.parse_args()
+        print('----- args', args)
+        if args['signature'] is None:
+            return "Register Payment: Bad signature format", 400
+        try:
+            (sender, received) = self.channel_manager.register_payment(
+                sender_address,
+                opening_block,
+                balance,
+                args['signature']
+            )
+            print(sender, received)
+        except KeyError:
+            return "Sender address not found", 404
+        except NoOpenChannel as e:
+            return str(e), 400
+        except KeyError:
+            return "Channel not found", 404
+
+        return received, 200
+
+    def delete(self, sender_address, opening_block, balance):
+        try:
+            close_signature = self.channel_manager.sign_close(
+                sender_address,
+                opening_block,
+                balance)
+        except NoOpenChannel as e:
+            return str(e), 400
+        except KeyError:
+            return "Channel not found", 404
+        ret = {'close_signature': encode_hex(close_signature)}
 
         return ret, 200
 

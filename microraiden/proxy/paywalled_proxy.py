@@ -20,6 +20,7 @@ from microraiden.proxy.resources import (
     ChannelManagementLogout,
     ChannelManagementRoot,
     ChannelManagementStats,
+    ChannelManagementRegisterPayment
 )
 
 from microraiden.proxy.resources.expensive import LightClientProxy
@@ -74,6 +75,9 @@ class PaywalledProxy:
         self.api.add_resource(ChannelManagementLogout, API_PATH + "/logout")
         self.api.add_resource(ChannelManagementChannelInfo,
                               API_PATH + "/channels/<string:sender_address>/<int:opening_block>",
+                              resource_class_kwargs={'channel_manager': self.channel_manager})
+        self.api.add_resource(ChannelManagementRegisterPayment,
+                              API_PATH + "/channels/<string:sender_address>/<int:opening_block>/<int:balance>",
                               resource_class_kwargs={'channel_manager': self.channel_manager})
         self.api.add_resource(ChannelManagementAdmin,
                               API_PATH + "/admin",
