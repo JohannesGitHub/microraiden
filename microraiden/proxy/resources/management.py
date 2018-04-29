@@ -162,7 +162,6 @@ class ChannelManagementChannelInfo(Resource):
         except KeyError:
             return "Channel not found", 404
         ret = {'close_signature': encode_hex(close_signature)}
-        print(close_signature)
         return ret, 200
 
 

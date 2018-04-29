@@ -394,7 +394,7 @@ class ChannelManager(gevent.Greenlet):
             signature(str):             balance proof to verify
         """
         assert is_checksum_address(sender)
-        c = self.verify_balance_proof(sender, open_block_number, balance, signature)
+        c = self.verify_balance_proof(sender, open_block_number, balance, signature)        
         if balance <= c.balance:
             raise InvalidBalanceAmount('The balance must not decrease.')
         if balance > c.deposit:
