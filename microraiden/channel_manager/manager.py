@@ -403,7 +403,7 @@ class ChannelManager(gevent.Greenlet):
         c.balance = balance
         c.last_signature = signature
         c.mtime = time.time()
-        self.state.set_channel(c)
+        self.state.set_payment(c)
         self.log.debug('registered payment (sender %s, block number %s, new balance %s)',
                        c.sender, open_block_number, balance)
         return c.sender, received

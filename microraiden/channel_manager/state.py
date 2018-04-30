@@ -48,6 +48,8 @@ CREATE TABLE `channels` (
     `ctime`             INTEGER         NOT NULL,
     `state`             INTEGER         NOT NULL,
     `confirmed`         BOOL            NOT NULL,
+    `payment_nonce`     INTEGER                 ,
+    `request_nonce`     INTEGER                 ,
     PRIMARY KEY (`sender`, `open_block_number`)
 );
 CREATE TABLE `topups` (
@@ -87,6 +89,8 @@ UPDATE_SYNCSTATE_SQL = {
 
 ADD_CHANNEL_SQL = """
 INSERT OR REPLACE INTO `channels` VALUES (
+    ?,
+    ?,
     ?,
     ?,
     ?,
@@ -306,14 +310,67 @@ class ChannelManagerState(object):
         )
         return result.fetchone()['rowid']
 
+    def get_channel_payment_nonce(self, sender: str, open_block_number: int):
+        sender = sender
+        c = self.conn.cursor()
+        c.execute(
+            'SELECT payment_nonce from `channels` WHERE sender = ? AND open_block_number = ?',
+            [sender, open_block_number]
+        )
+        result = c.fetchone()
+        if result is None:
+            return None
+        return result['payment_nonce']
+    
+    def get_channel_request_nonce(self, sender: str, open_block_number: int):
+        sender = sender
+        c = self.conn.cursor()
+        c.execute(
+            'SELECT request_nonce from `channels` WHERE sender = ? AND open_block_number = ?',
+            [sender, open_block_number]
+        )
+        result = c.fetchone()
+        if result is None:
+            return None
+        return result['request_nonce']
+
     def get_unconfirmed_topups(self, channel_rowid: int):
         c = self.conn.cursor()
         c.execute('SELECT * FROM topups WHERE channel_rowid = ?', [channel_rowid])
         return {result['txhash']: result['deposit'] for result in c.fetchall()}
 
     def set_channel(self, channel: Channel):
-        """Update channel state"""
+        """Update channel state""" 
         self.add_channel(channel)
+
+    def set_payment(self, channel: Channel):
+        """Add or update channel state"""
+        assert channel.open_block_number > 0
+        assert channel.state is not ChannelState.UNDEFINED
+        assert is_address(channel.sender)
+        payment_nonce = self.get_channel_payment_nonce(channel.sender, channel.open_block_number)
+        request_nonce = self.get_channel_request_nonce(channel.sender, channel.open_block_number)
+        if nonce is None:
+            nonce = -1
+        nonce = nonce + 1
+        params = [
+            channel.sender,
+            channel.open_block_number,
+            str(channel.deposit),
+            str(channel.balance),
+            channel.last_signature,
+            channel.settle_timeout,
+            channel.mtime,
+            channel.ctime,
+            channel.state.value,
+            channel.confirmed,
+            payment_nonce,
+            request_nonce
+        ]
+        self.conn.execute(ADD_CHANNEL_SQL, params)
+        rowid = self.get_channel_rowid(channel.sender, channel.open_block_number)
+        self.set_unconfirmed_topups(rowid, channel.unconfirmed_topups)
+        self.conn.commit()
 
     def channel_exists(self, sender: str, open_block_number: int):
         """Return true if channel(sender, open_block_number) exists"""
@@ -339,6 +396,8 @@ class ChannelManagerState(object):
         assert channel.open_block_number > 0
         assert channel.state is not ChannelState.UNDEFINED
         assert is_address(channel.sender)
+        payment_nonce = self.get_channel_payment_nonce(channel.sender, channel.open_block_number)
+        request_nonce = self.get_channel_request_nonce(channel.sender, channel.open_block_number)
         params = [
             channel.sender,
             channel.open_block_number,
@@ -349,7 +408,9 @@ class ChannelManagerState(object):
             channel.mtime,
             channel.ctime,
             channel.state.value,
-            channel.confirmed
+            channel.confirmed,
+            payment_nonce,
+            request_nonce
         ]
         self.conn.execute(ADD_CHANNEL_SQL, params)
         rowid = self.get_channel_rowid(channel.sender, channel.open_block_number)
