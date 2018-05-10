@@ -350,9 +350,9 @@ class ChannelManagerState(object):
         assert is_address(channel.sender)
         payment_nonce = self.get_channel_payment_nonce(channel.sender, channel.open_block_number)
         request_nonce = self.get_channel_request_nonce(channel.sender, channel.open_block_number)
-        if nonce is None:
-            nonce = -1
-        nonce = nonce + 1
+        if payment_nonce is None:
+            payment_nonce = 0
+        payment_nonce = payment_nonce + 1
         params = [
             channel.sender,
             channel.open_block_number,
